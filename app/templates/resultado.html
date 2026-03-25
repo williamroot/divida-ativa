@@ -1,0 +1,170 @@
+<div class="resultado-wrapper">
+
+    <div class="card resultado-card">
+        <h3>Dados do Devedor</h3>
+        <dl class="info-grid">
+            {% if devedor %}
+            <dt>Nome / Razão Social</dt>
+            <dd>{{ devedor.nome or "—" }}</dd>
+            <dt>CNPJ</dt>
+            <dd>{{ devedor.cnpj or "—" }}</dd>
+            {% if devedor.endereco %}
+            <dt>Endereço</dt>
+            <dd>{{ devedor.endereco }}</dd>
+            {% endif %}
+            {% if devedor.municipio %}
+            <dt>Município</dt>
+            <dd>{{ devedor.municipio }}</dd>
+            {% endif %}
+            {% else %}
+            <dd>Nenhuma informação do devedor disponível.</dd>
+            {% endif %}
+        </dl>
+    </div>
+
+    {% if resumo %}
+    <div class="card resultado-card">
+        <h3>Resumo</h3>
+        <dl class="info-grid">
+            {% if resumo.total_debitos %}
+            <dt>Total de Débitos</dt>
+            <dd>{{ resumo.total_debitos }}</dd>
+            {% endif %}
+            {% if resumo.valor_total %}
+            <dt>{{ resumo.label_valor or "Valor Total (R$)" }}</dt>
+            <dd>R$ {{ "{:,.2f}".format(resumo.valor_total).replace(",", "X").replace(".", ",").replace("X", ".") }}</dd>
+            {% endif %}
+        </dl>
+    </div>
+    {% endif %}
+
+    {% if debitos %}
+    <div class="card resultado-card">
+        <h3>Débitos por Tipo</h3>
+        <div class="tabela-responsiva">
+            <table class="tabela">
+                <thead>
+                    <tr>
+                        <th>Tipo</th>
+                        <th>Quantidade</th>
+                        <th>Origem</th>
+                        <th>Valor Total (R$)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for debito in debitos %}
+                    <tr>
+                        <td>{{ debito.tipo or "—" }}</td>
+                        <td>{{ debito.quantidade or "—" }}</td>
+                        <td>{{ debito.origem or "—" }}</td>
+                        <td>
+                            {% if debito.valor_total %}
+                            R$ {{ "{:,.2f}".format(debito.valor_total).replace(",", "X").replace(".", ",").replace("X", ".") }}
+                            {% else %}
+                            —
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if cdas %}
+    <div class="card resultado-card">
+        <h3>Detalhes das CDAs ({{ cdas|length }})</h3>
+        {% for cda in cdas %}
+        <details class="cda-item">
+            <summary class="cda-summary">
+                <span class="cda-numero">{{ cda.cda or "—" }}</span>
+                <span class="cda-ref">Ref: {{ cda.referencia or "—" }}</span>
+                <span class="cda-data">{{ cda.data_inscricao or "—" }}</span>
+                {% if cda.valor_atualizado %}
+                <span class="cda-valor">R$ {{ "{:,.2f}".format(cda.valor_atualizado).replace(",", "X").replace(".", ",").replace("X", ".") }}</span>
+                {% endif %}
+                {% if cda.detalhe and cda.detalhe.situacao %}
+                <span class="badge badge-{{ 'concluido' if 'pago' in (cda.detalhe.situacao|lower) else 'pendente' }}">{{ cda.detalhe.situacao }}</span>
+                {% endif %}
+            </summary>
+            {% if cda.detalhe %}
+            <div class="cda-detalhe">
+                <div class="cda-detalhe-grid">
+                    <div class="cda-info">
+                        <h4>Dados da CDA</h4>
+                        <dl class="info-grid">
+                            <dt>N° CDA</dt>
+                            <dd>{{ cda.detalhe.cda or cda.cda or "—" }}</dd>
+                            <dt>Data Inscrição</dt>
+                            <dd>{{ cda.detalhe.data_inscricao or "—" }}</dd>
+                            <dt>Situação</dt>
+                            <dd>{{ cda.detalhe.situacao or "—" }}</dd>
+                            <dt>Saldo (R$)</dt>
+                            <dd>
+                                {% if cda.detalhe.saldo %}
+                                R$ {{ "{:,.2f}".format(cda.detalhe.saldo).replace(",", "X").replace(".", ",").replace("X", ".") }}
+                                {% else %}—{% endif %}
+                            </dd>
+                            {% if cda.detalhe.processo_unificado %}
+                            <dt>Processo (Unificado)</dt>
+                            <dd>{{ cda.detalhe.processo_unificado }}</dd>
+                            {% endif %}
+                            {% if cda.detalhe.natureza %}
+                            <dt>Natureza</dt>
+                            <dd>{{ cda.detalhe.natureza }}</dd>
+                            {% endif %}
+                        </dl>
+                    </div>
+                    {% if cda.detalhe.receitas %}
+                    <div class="cda-receitas">
+                        <h4>Composição do Débito</h4>
+                        <table class="tabela tabela-mini">
+                            <thead>
+                                <tr>
+                                    <th>Tipo</th>
+                                    <th>Valor (R$)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for receita in cda.detalhe.receitas %}
+                                <tr>
+                                    <td>{{ receita.tipo_receita or "—" }}</td>
+                                    <td>
+                                        {% if receita.valor %}
+                                        R$ {{ "{:,.2f}".format(receita.valor).replace(",", "X").replace(".", ",").replace("X", ".") }}
+                                        {% else %}—{% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </details>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if cartorio %}
+    <div class="card resultado-card">
+        <h3>Informações de Protesto</h3>
+        <dl class="info-grid">
+            {% for chave, valor in cartorio.items() %}
+            <dt>{{ chave.replace("_", " ").title() }}</dt>
+            <dd>{{ valor }}</dd>
+            {% endfor %}
+        </dl>
+    </div>
+    {% endif %}
+
+    <div class="resultado-acoes">
+        <button class="btn btn-primary" onclick="exportarJson({{ resultado_json }})">
+            Exportar JSON
+        </button>
+    </div>
+
+</div>
