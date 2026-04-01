@@ -178,6 +178,11 @@ function atualizarProgresso(dados) {
     }
 }
 
+function formatarValor(valor) {
+    if (valor == null || valor === 0) return "\u2014";
+    return "R$ " + valor.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 function exibirResultadosLote(dados) {
     var container = document.getElementById("lote-tabela-container");
     limparConteudo(container);
@@ -190,50 +195,103 @@ function exibirResultadosLote(dados) {
         return;
     }
 
-    var wrapper = document.createElement("div");
-    wrapper.className = "tabela-responsiva";
-    var tabela = document.createElement("table");
-    tabela.className = "tabela";
+    // Botão exportar lote
+    var btnExportar = document.createElement("button");
+    btnExportar.className = "btn btn-primary";
+    btnExportar.textContent = "Exportar Lote (JSON)";
+    btnExportar.style.marginBottom = "1rem";
+    btnExportar.onclick = function () { exportarJson(dados.resultados); };
+    container.appendChild(btnExportar);
 
-    var thead = document.createElement("thead");
-    var trHead = document.createElement("tr");
-    ["CNPJ", "Nome", "CDAs", "Status"].forEach(function (titulo) {
-        var th = document.createElement("th");
-        th.textContent = titulo;
-        trHead.appendChild(th);
-    });
-    thead.appendChild(trHead);
-    tabela.appendChild(thead);
-
-    var tbody = document.createElement("tbody");
     dados.resultados.forEach(function (item) {
-        var tr = document.createElement("tr");
+        var card = document.createElement("div");
+        card.className = "card lote-card";
 
-        var tdCnpj = document.createElement("td");
-        tdCnpj.textContent = item.cnpj || "\u2014";
-        tr.appendChild(tdCnpj);
+        // Header do card
+        var header = document.createElement("div");
+        header.className = "lote-card-header";
 
-        var tdNome = document.createElement("td");
-        tdNome.textContent = item.nome || "\u2014";
-        tr.appendChild(tdNome);
+        var cnpjEl = document.createElement("span");
+        cnpjEl.className = "lote-cnpj";
+        cnpjEl.textContent = item.cnpj || "\u2014";
+        header.appendChild(cnpjEl);
 
-        var tdCdas = document.createElement("td");
-        tdCdas.textContent = item.total_cdas != null ? item.total_cdas : "\u2014";
-        tr.appendChild(tdCdas);
+        var nomeEl = document.createElement("span");
+        nomeEl.className = "lote-nome";
+        nomeEl.textContent = item.nome || "";
+        header.appendChild(nomeEl);
 
-        var tdStatus = document.createElement("td");
-        var badge = document.createElement("span");
-        var classeStatus = item.status === "concluido" ? "concluido" : item.status === "erro" ? "erro" : "pendente";
-        badge.className = "badge badge-" + classeStatus;
-        badge.textContent = item.status || "\u2014";
-        tdStatus.appendChild(badge);
-        tr.appendChild(tdStatus);
+        if (!item.encontrado) {
+            var semDivida = document.createElement("span");
+            semDivida.className = "badge badge-concluido";
+            semDivida.textContent = "Sem divida ativa";
+            header.appendChild(semDivida);
+        } else {
+            var totalEl = document.createElement("span");
+            totalEl.className = "lote-valor";
+            totalEl.textContent = formatarValor(item.valor_total);
+            header.appendChild(totalEl);
+        }
 
-        tbody.appendChild(tr);
+        card.appendChild(header);
+
+        if (item.status === "erro") {
+            var erroMsg = document.createElement("p");
+            erroMsg.className = "mensagem-erro";
+            erroMsg.textContent = "Erro ao consultar este CNPJ.";
+            card.appendChild(erroMsg);
+        } else if (item.encontrado && item.tipos && item.tipos.length > 0) {
+            // Resumo
+            var resumo = document.createElement("div");
+            resumo.className = "lote-resumo";
+            resumo.textContent = item.total_debitos + " debito(s) — " + formatarValor(item.valor_total);
+            card.appendChild(resumo);
+
+            // Tabela de tipos
+            var wrapper = document.createElement("div");
+            wrapper.className = "tabela-responsiva";
+            var tabela = document.createElement("table");
+            tabela.className = "tabela tabela-mini";
+
+            var thead = document.createElement("thead");
+            var trHead = document.createElement("tr");
+            ["Tipo", "Qtde", "Origem", "Valor Total (R$)"].forEach(function (t) {
+                var th = document.createElement("th");
+                th.textContent = t;
+                trHead.appendChild(th);
+            });
+            thead.appendChild(trHead);
+            tabela.appendChild(thead);
+
+            var tbody = document.createElement("tbody");
+            item.tipos.forEach(function (tipo) {
+                var tr = document.createElement("tr");
+
+                var tdTipo = document.createElement("td");
+                tdTipo.textContent = tipo.tipo || "\u2014";
+                tr.appendChild(tdTipo);
+
+                var tdQtde = document.createElement("td");
+                tdQtde.textContent = tipo.quantidade || "\u2014";
+                tr.appendChild(tdQtde);
+
+                var tdOrigem = document.createElement("td");
+                tdOrigem.textContent = tipo.origem || "\u2014";
+                tr.appendChild(tdOrigem);
+
+                var tdValor = document.createElement("td");
+                tdValor.textContent = formatarValor(tipo.valor_total);
+                tr.appendChild(tdValor);
+
+                tbody.appendChild(tr);
+            });
+            tabela.appendChild(tbody);
+            wrapper.appendChild(tabela);
+            card.appendChild(wrapper);
+        }
+
+        container.appendChild(card);
     });
-    tabela.appendChild(tbody);
-    wrapper.appendChild(tabela);
-    container.appendChild(wrapper);
 }
 
 /* ===== Histórico ===== */

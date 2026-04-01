@@ -166,12 +166,36 @@ async def api_status_lote(lote_id: int):
         devedor = resultado.get("devedor", {})
         debitos = resultado.get("debitos", [])
         resumo = resultado.get("resumo", {})
-        resultados.append({
-            "cnpj": consulta["cnpj"],
+        encontrado = resultado.get("encontrado", False)
+
+        cnpj_raw = consulta["cnpj"]
+        cnpj_fmt = _formatar_cnpj(cnpj_raw)
+
+        item = {
+            "cnpj": cnpj_fmt,
             "nome": devedor.get("nome", ""),
-            "total_cdas": resumo.get("total_debitos", len(debitos)),
+            "encontrado": encontrado,
             "status": consulta["status"],
-        })
+        }
+
+        if encontrado and debitos:
+            item["total_debitos"] = resumo.get("total_debitos", 0)
+            item["valor_total"] = resumo.get("valor_total", 0)
+            item["tipos"] = [
+                {
+                    "tipo": d.get("tipo", ""),
+                    "quantidade": d.get("quantidade", 0),
+                    "origem": d.get("origem", ""),
+                    "valor_total": d.get("valor_total", 0),
+                }
+                for d in debitos
+            ]
+        else:
+            item["total_debitos"] = 0
+            item["valor_total"] = 0
+            item["tipos"] = []
+
+        resultados.append(item)
 
     return {
         "id": lote["id"],
@@ -250,3 +274,11 @@ async def _processar_lote(lote_id: int, cnpjs: list[str]):
 def _limpar_cnpj(cnpj: str) -> str:
     """Remove caracteres não numéricos do CNPJ."""
     return re.sub(r"\D", "", cnpj)
+
+
+def _formatar_cnpj(cnpj: str) -> str:
+    """Formata CNPJ como 00.000.000/0000-00."""
+    c = _limpar_cnpj(cnpj)
+    if len(c) != 14:
+        return cnpj
+    return f"{c[:2]}.{c[2:5]}.{c[5:8]}/{c[8:12]}-{c[12:14]}"
